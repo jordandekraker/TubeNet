@@ -23,7 +23,7 @@ Msz = np.prod(motorsz)
 NNwidth = Msz # how wide should each NNlayer be?
 
 # initialize tensorflow trainable variables
-W1 = tf.Variable(tf.random_normal([Msz, NNwidth]))  *(2/(Msz+NNwidth))
+W1 = tf.Variable(tf.random_normal([Msz+Ssz, NNwidth]))  *(2/(Msz+Ssz+NNwidth))
 b1 = tf.Variable(tf.random_normal([NNwidth])) *(2/(Msz+NNwidth))
 
 W2 = tf.Variable(tf.random_normal([NNwidth, Ssz])) 
@@ -57,7 +57,7 @@ def tubenet():
     nn = tf.constant([0]) #counter 
 
     # feed S and M forward
-    h1 = tf.tanh(tf.matmul(tf.concat((M),1), W1) + b1) 
+    h1 = tf.tanh(tf.matmul(tf.concat((M,S),1), W1) + b1) 
     h2 = tf.matmul(h1, W2) + b2 # no tanh
     h3 = tf.matmul(M, W3) + b3 # no tanh
     
