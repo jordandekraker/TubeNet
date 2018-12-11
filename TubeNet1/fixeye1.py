@@ -20,7 +20,7 @@ import matplotlib.pyplot as plt
 
 # fisheye filter
 def fixeye(M,sensesz,motorsz):
-    image = cv2.imread("misc/SmileyFace8bitGray.png",cv2.IMREAD_GRAYSCALE)
+    image = cv2.imread("SmileyFace8bitGray.png",cv2.IMREAD_GRAYSCALE)
     image = image.astype(float)+0.1 # otherwise can lead to cropping problems in Meye
     M = M.astype(int)
     
