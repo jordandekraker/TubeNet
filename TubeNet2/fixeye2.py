@@ -1,10 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-This script will create 'retinal images' based on the motor fixation location,
- M. In this case the image itself is simply "misc/SmileyFace8bitGray.png". 
- sensesz and motorsz represent the resolution of the output image and the 
- possible fixation locations
+This script will import webcam stream and export motor actions to Arduino. 
 
 @author: jordandekraker
 """
@@ -31,17 +28,7 @@ def fixeye(M,sensesz,motorsz):
     M = np.reshape(M,motorsz)
     M = np.reshape([np.where(M==1)],[3])
     M = M/motorsz # [Msz,Msz,Msz/2]
-    
-    # motor action contingencies
-    global pan
-    if (M[0]==0) & (pan>25):
-        pan = pan-10
-        exportMotor(pan)
-        M[0] = 1
-    elif (M[0]==motorsz[1]-1) & (pan<155):
-        pan = pan+10
-        exportMotor(pan)
-        M[0] = motorsz[1]-2
+
     image = importStream()
 
     M[0] = np.round(M[0]*image.shape[0])
@@ -84,13 +71,14 @@ def importStream():
             n+=1
     return i+0.001
 
-def exportMotor(pan):
+def exportMotor(pan,tilt):
     control=socket.socket(socket.AF_INET,socket.SOCK_STREAM)
     control.connect(('192.168.1.1',2001))
-    control.send(bytes([255,1,7,pan,255]))#range 0-160deg (stops responding after 160)
+    control.send(bytes([255,1,7,pan,255])) #range 0-160deg (stops responding after 160)
+    control.send(bytes([255,1,8,tilt,255])) #range 0-90deg (due to hardware constraint)
 #    sleep(0.1)
     control.close()
-    return pan
+    return 
 
 def makeGaussian(size, fwhm = 3, center=None):
     """ Make a square gaussian kernel.
