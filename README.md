@@ -23,7 +23,7 @@ This expanded input image set necessitates either a greater capacity (which has 
 
 Note that M(fix) and M(head) are passed forward at each iteration, but M(loc) passes forward only the locomation taken at that iteration. Thus the state (H(loc)) of the location of TubeNet3 can only be inferred from a history of past locomotions. This is analogous to having proprioceptive feedback, which is normally the case for fixation and head direction in animals but is not the case for relative location in an environment. 
 
-An LSTM is introduced to try and track M(loc) history and infer H(loc), but this inference could also be made by the cues available in S+1 and (M(fix)+0 and/or M(head)+0). Note that since S and M are not explicitly separated the LSTM may also store information about S or M(fix) (which contain temporal autocorrelation because of the reinforcement algorithm introduced in 1.1). ??This produces a more stepwise pattern of explore - learn - explore.?? (to be tested still) 
+An LSTM is introduced to try and track M(loc) history and infer H(loc), but this inference could also be made by the cues available in S+1 and (M(fix)+0 and/or M(head)+0). This is likely since S and M all contain temporal autocorrelation due to the reinforcement algorithm introduced in 1.1. ??This produces a more stepwise pattern of explore - learn - explore.?? (to be tested still) 
 
 
 
