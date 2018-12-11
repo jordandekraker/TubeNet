@@ -4,7 +4,7 @@ The broad direction of TubeNet is to create continuously learning AI systems tha
 
 Part of the motive for this scheme comes from a branch of cognitive neuroscience known as 'predictive coding', the idea that high order cortical regions are constantly trying to supress lower order regions that they predict will selectively become activated, and its only when that prediction fails that there is a strong sensory-driven feed-forward signal.
 
-Another motivation for this project is the idea that the complex representational systems that exist in brains comes about through evolutionary reinforcement, but can also be shaped on a much shorter timescale by the statistics of an environment. For example, one long-term goal is that TubeNet will naturally develop Place- and Grid-cell representations to represent its envoronment, with no built in structure of this sort.
+Another motivation for this project is the idea that the complex representational systems that exist in brains comes about through evolutionary reinforcement, but can also be shaped on a much shorter timescale by the statistics of an environment. For example, one long-term goal is that TubeNet will naturally develop Place- and Grid-cell representations of its envoronment, with no built in structure of this sort.
 
 
 **TubeNet1** chooses fixation location (M+0) over a single image, and then applies a fisheye filter centered at M+0 to produce a new image (S+0). A new fixation (M+1) and corresponding image (S+1) are generated. S+0 and M+1 are vectorized and fed into a small fully connected NN, and S+1 is used as the training signal.
