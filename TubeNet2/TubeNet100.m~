@@ -1,0 +1,64 @@
+clear; close all;
+
+M_sz = [16,16,4];
+S_sz = [32 32];
+N_sz = 2000;
+M = zeros(M_sz);
+M(4,4,4) = 1;
+M = reshape(M,[prod(M_sz),1]);
+S = fixeye(M,S_sz,M_sz);
+% imagesc(reshape(S,S_sz));
+rollingAvg = 0;
+
+
+Snet = feedforwardnet(N_sz);
+Snet.trainParam.showWindow=0;
+Snet.trainParam.epochs=1;
+Snet.trainParam.min_grad = 0;
+% Snet = configure(Snet,[M;S],S);
+Snet = adapt(Snet,[M;S],S);
+
+Snet.layers{:}.initFcn = 'initnw';
+Snet = init(Snet);
+
+Mnet = feedforwardnet(N_sz);
+Mnet.trainParam.showWindow=0;
+Mnet.trainParam.epochs=1;
+Mnet = configure(Mnet,[M;S],S);
+
+figure; hold on;
+for iters = 0:5
+    %% first look at existing network state and choose Mnew
+    if rand<1/(iters/50 +10)
+        Mnew = zeros([prod(M_sz),1]);
+        Mnew(randi(prod(M_sz),1)) = 1;
+    else
+        Mnew = zeros([prod(M_sz),1]);
+        []
+        [~,Mind] = max(Mnet([M;S]));
+        Mnew(Mind) = 1;
+    end
+    
+    %% train Snet based on old prediction and newM
+    Snew = fixeye(M,S_sz,M_sz);
+    Spred = Snet([Mnew;S]);
+    [Snet,Straininfo] = train(Snet,[Mnew;S],Snew);
+    Sloss = perform(Snet,Snew,Snet([Mnew;S]));
+    
+    %% train Mnet to find M that causes Snet to fail
+    rollingAvg = 0.99*rollingAvg + 0.01*Sloss;
+    R = Sloss - rollingAvg;
+    Mtarget = Mnew + Mnew*R;
+    [Mnet,Mtraininfo] = train(Mnet,[M;Spred],Mtarget);
+    Mloss = perform(Mnet,Mtarget,Mnet([M;Spred]));
+    
+    %% update for next iteration
+    S = Snew; M = Mnew;
+    
+    if rem(iters,1)==0
+    subplot(1,2,1); imagesc(reshape(Snew,S_sz)); axis equal tight; 
+    subplot(1,2,2); imagesc(reshape(Spred,S_sz)); axis equal tight; 
+    title(sprintf('iteration: %d \nSloss: %f \nMloss: %f',iters,Sloss,Mloss))
+    drawnow;
+    end
+end

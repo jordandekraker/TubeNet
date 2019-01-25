@@ -37,7 +37,7 @@ initialb3 = scipy.stats.zscore(initialb3)
 b3 = tf.Variable(tf.cast(initialb3,tf.float32))
 
 optimizerS = tf.train.GradientDescentOptimizer(learning_rate=0.1) 
-optimizerM = tf.train.GradientDescentOptimizer(learning_rate=0.1) 
+optimizerM = tf.train.GradientDescentOptimizer(learning_rate=0.01) 
 
 # initialize M and S variables
 initialM = np.zeros([1,Msz])

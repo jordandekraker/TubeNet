@@ -10,7 +10,7 @@ This script will create 'retinal images' based on the motor fixation location,
 """
 import cv2
 import numpy as np
-import scipy.misc
+import scipy
 import matplotlib.pyplot as plt
 
 #sensesz = [32,32]
@@ -25,7 +25,7 @@ def fixeye(M,sensesz,motorsz):
     M = M.astype(int)
     
     # make sure input is square matrices
-    image = np.reshape(image,[np.int(np.sqrt(image.size)),np.int(np.sqrt(image.size))])
+    image = np.reshape(image,[np.int(np.sqrt(image.size)),np.int(np.sqrt(image.size))]).astype('double')
     
     #convert M to coordinates in a given range
     M = np.reshape(M,motorsz)
@@ -33,8 +33,7 @@ def fixeye(M,sensesz,motorsz):
     M = M/motorsz # [Msz,Msz,Msz/2]
     M[0] = np.round(M[0]*image.shape[0])
     M[1] = np.round(M[1]*image.shape[1])
-    M[2] = np.round(10.**(M[2]+1)) # range 10-1000
-    
+    M[2] = np.round(10.**(M[2]+1)) # range 10-10000
     # set up fisheye parameters
     cam = np.eye(3)
     cam[0,2] = M[0]  # define center x
@@ -52,9 +51,8 @@ def fixeye(M,sensesz,motorsz):
     # resize and normalize
     dst = scipy.misc.imresize(dst,sensesz)
     dst = np.reshape(dst,[sensesz[0]*sensesz[1]]) #make 1D
-    dst = dst - np.mean(dst)
-    dst = dst / np.std(dst)
-    return dst.astype('double')
+    dst = scipy.stats.zscore(dst)
+    return dst
 
 def makeGaussian(size, fwhm = 3, center=None):
     """ Make a square gaussian kernel.

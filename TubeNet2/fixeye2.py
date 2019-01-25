@@ -7,42 +7,55 @@ This script will import webcam stream and export motor actions to Arduino.
 """
 import cv2
 import numpy as np
-import scipy.misc
+import scipy
 import matplotlib.pyplot as plt
 import urllib 
 import socket
 from time import sleep
 
-#sensesz = [32,32]
-#motorsz = [16,16,4]        
-#M = np.zeros(motorsz)
-#M[2,4,2] = 1.
-pan = 90
-tilt = 30
+global image, S_sz, Mfix_sz, Mhead_sz, headrange
+S_sz = [32,32]
+Mfix_sz = [16,16,3]
+Mhead_sz = [20,20] 
+
+#define Mhead allowable range (pan 0-160; told 0-90)
+headmin = [20,10]
+headrange = [120,50]
 
 # fisheye filter
-def fixeye(M,sensesz,motorsz):
-    M = M.astype(int)
+def fixeye(Mfix,n):
+    global image, S_sz, Mfix_sz, Mhead_sz, headrange
     
-    #convert M to coordinates in a given range
-    M = np.reshape(M,motorsz)
-    M = np.reshape([np.where(M==1)],[3])
-    M = M/motorsz # [Msz,Msz,Msz/2]
-
-    image = importStream()
-
-    M[0] = np.round(M[0]*image.shape[0])
-    M[1] = np.round(M[1]*image.shape[1])
-    M[2] = np.round(100.**(M[2]+1)) # range 10-1000
+    #convert Mfix to coordinates in a given range
+    Mfix = Mfix.astype(int)
+    Mfix = np.reshape(Mfix,Mfix_sz)
+    Mfix = np.reshape([np.where(Mfix==1)],[3])
+    Mfix = Mfix/Mfix_sz # rescale each value 0:1
+    Mfix[0] = np.round(Mfix[0]*(image.shape[0]-1))
+    Mfix[1] = np.round(Mfix[1]*(image.shape[1]-1))
+    Mfix[2] = np.round(100.**(Mfix[2] +1)) # focal length range 100-1000
     
+#    #convert Mhead to coordinates in a given range
+#    Mhead = Mhead.astype(int)
+#    Mhead = np.reshape(Mhead,Mhead_sz)
+#    Mhead = np.reshape([np.where(Mhead==1)],[3])
+#    Mhead = round(Mhead*headrange +headmin)
+            
+    if np.remainder(n,50)==0:
+        Mhead = [np.random.randint(0,headrange[0])+headmin[0],np.random.randint(0,headrange[1])+headmin[1]]
+        exportMotor(Mhead)
+        image = importStream()
+        while np.max(image)>255 | np.min(image)<0 | np.isnan(image).any():
+            image = importStream()
+        
     # set up fisheye parameters
     cam = np.eye(3)
-    cam[0,2] = M[0]  # define center x
-    cam[1,2] = M[1]  # define center y
-    cam[0,0] = M[2]        # define focal length x
-    cam[1,1] = M[2]        # define focal length y
+    cam[0,2] = Mfix[0]  # define center x
+    cam[1,2] = Mfix[1]  # define center y
+    cam[0,0] = Mfix[2]        # define focal length x
+    cam[1,1] = Mfix[2]        # define focal length y
     #run fisheye
-    dst = cv2.undistort(image,cam,1)
+    dst = cv2.undistort(image.astype('double'),cam,1)
     
     # crop
     x = np.where(~np.all(dst==0,axis=1))[0]
@@ -50,11 +63,10 @@ def fixeye(M,sensesz,motorsz):
     dst = dst[x[0]:x[-1],y[0]:y[-1]]
 
     # resize and normalize
-    dst = scipy.misc.imresize(dst,sensesz)
-    dst = np.reshape(dst,[sensesz[0]*sensesz[1]]) #make 1D
-    dst = dst - np.mean(dst)
-    dst = dst / np.std(dst)
-    return dst.astype('double')
+    dst = scipy.misc.imresize(dst,[S_sz[0],S_sz[1]])
+    dst = np.reshape(dst,np.prod(S_sz)) #make 1D
+    dst = scipy.stats.zscore(dst)
+    return dst+0.000001
 
 def importStream():
     stream=urllib.request.urlopen('http://192.168.1.1:8080/?action=stream')
@@ -68,16 +80,17 @@ def importStream():
             jpg = importedbytes[a:b+2]
             importedbytes= importedbytes[b+2:]
             i = cv2.imdecode(np.fromstring(jpg, dtype=np.uint8), cv2.IMREAD_GRAYSCALE)
-            n+=1
-    return i+0.001
+            n=1
+    return i
+image = importStream()
 
-def exportMotor(pan,tilt):
+def exportMotor(Mhead):
     control=socket.socket(socket.AF_INET,socket.SOCK_STREAM)
     control.connect(('192.168.1.1',2001))
-    control.send(bytes([255,1,7,pan,255])) #range 0-160deg (stops responding after 160)
-    control.send(bytes([255,1,8,tilt,255])) #range 0-90deg (due to hardware constraint)
-#    sleep(0.1)
+    control.send(bytes([255,1,7,Mhead[0],255])) #range 0-160deg (stops responding after 160)
+    control.send(bytes([255,1,8,Mhead[1],255])) #range 0-90deg (due to hardware constraint)
     control.close()
+    sleep(0.1)
     return 
 
 def makeGaussian(size, fwhm = 3, center=None):
