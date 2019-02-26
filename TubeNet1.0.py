@@ -40,7 +40,7 @@ saver = tf.train.Saver()
 
 ############################ Define PhysicsEngine ############################
 
-smiley = cv2.imread("SmileyFace8bitGray.png",cv2.IMREAD_GRAYSCALE)
+smiley = cv2.imread("misc/SmileyFace8bitGray.png",cv2.IMREAD_GRAYSCALE)
 smiley = smiley.astype(float)+0.01 
 
 def fixeye(M):
@@ -89,7 +89,7 @@ for iters in range(100000):
     Snew = np.zeros([1,np.prod(Ssz)])
     Snew[0,:] = SMnew[0,:np.prod(Ssz)]
     Mnew = np.zeros([1,np.prod(Msz)])
-    if np.random.rand(1) < 1/(iters/50 +10): # sometimes take a random action
+    if np.random.rand(1) > 1/(iters/50 +10): # sometimes take a random action
         Mnew[0,np.argmax(SMnew[0,np.prod(Ssz):])] = 1
     else:
         Mnew[0,np.random.randint(np.prod(Msz))] = 1
