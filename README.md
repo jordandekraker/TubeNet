@@ -8,5 +8,5 @@ Another motivation for this project is the idea that the complex representationa
 
 The basic architecture will consist of feeding sensory (S) and motor (M) signals into a neural network (TubeNet). A physics engine will simulate or carry out M, and then acquire a corresponding new S (Starget), which will be used as a training signal for the TubeNet. A secondary training signal will reinforce M based on some desired behaviour (Mtarget).
 
-![Alt text](/TubeNet/diagrams/BasicLayout.jpg?raw=true "Optional title")
+![Alt text](diagrams/BasicLayout.jpg?raw=true "Optional title")
 
