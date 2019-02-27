@@ -140,4 +140,5 @@ for iters in range(100000):
         
 sess.close()
 l = l[~np.all(l==0,1)]
-plt.plot(np.mean(l[:,Ssz],1))
+plt.plot(np.mean(l[:,:np.prod(Ssz)],1))
+plt.plot(np.mean(l[:,np.prod(Ssz):],1))
