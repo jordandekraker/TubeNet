@@ -3,7 +3,9 @@
 """
 Created on Mon Feb 25 12:02:34 2019
 
-Tied encoding and decoding weights, high capacity LSTM in the middle
+Tied encoding and decoding weights, with a 'hippocampus' in the middle
+Hippocampus is broken into a large fully connected layer with dropout (DG)
+followed by an LSTM layer.
 
 @author: jordandekraker
 """
@@ -39,7 +41,9 @@ s1 = lstm.zero_state(1, dtype=tf.float64)
 a1 = tf.nn.tanh(tf.matmul(X,W1) + b1)
 a2 = tf.nn.tanh(tf.matmul(a1,W2) + b2)
 a3 = tf.nn.tanh(tf.matmul(a2,W3) + b3)
-h1,s1 = lstm(a3,s1)
+d1 = tf.layers.dense(inputs=a3,units=int(sz),activation=tf.nn.tanh) #DG
+d2 = tf.nn.dropout(d1,keep_prob=1/8) #DG
+h1,s1 = lstm(d2,s1) #CA
 a4 = tf.nn.tanh(tf.matmul(h1,tf.transpose(W3))+b4)
 a5 = tf.nn.tanh(tf.matmul(a4,tf.transpose(W2))+b5)
 a6 = tf.nn.tanh(tf.matmul(a5,tf.transpose(W1))+b6)
@@ -55,7 +59,7 @@ init = tf.global_variables_initializer()
 sess = tf.Session()
 sess.run(init)
 saver = tf.train.Saver()
-#saver.restore(sess, "tmp/TubeNet1.0_10000.ckpt")
+#saver.restore(sess, "tmp/TubeNet1.1_10000.ckpt")
 
 ############################ Define PhysicsEngine ############################
 
@@ -127,8 +131,8 @@ for iters in range(100000):
     
     # benchmark
     if np.remainder(iters,10)==0:
-        Sloss = np.mean(l[0,:np.prod(Ssz)])
-        Mloss = np.mean(l[0,np.prod(Ssz):])
+        Sloss = np.mean(l[iters,:np.prod(Ssz)])
+        Mloss = np.mean(l[iters,np.prod(Ssz):])
         print('Sloss: '+str(Sloss) +' Mloss: ' +str(Mloss))
         plt.subplot(1,2,1)
         plt.imshow(np.reshape(Starget,Ssz),cmap='gray')    
@@ -136,9 +140,9 @@ for iters in range(100000):
         plt.imshow(np.reshape(Snew,Ssz),cmap='gray')
         plt.show()
     if np.remainder(iters,10000)==0:
-        saver.save(sess, 'tmp/TubeNet1.0_iter'+str(iters)+'.ckpt')
+        saver.save(sess, 'tmp/TubeNet1.1_iter'+str(iters)+'.ckpt')
         
 sess.close()
 l = l[~np.all(l==0,1)]
-plt.plot(np.mean(l[:,:np.prod(Ssz)],1))
-plt.plot(np.mean(l[:,np.prod(Ssz):],1))
+plt.scatter(range(l[:,0].size),np.mean(l[:,:np.prod(Ssz)],1),marker='.')
+plt.scatter(range(l[:,0].size),np.mean(l[:,np.prod(Ssz):],1),marker='.')

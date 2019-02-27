@@ -109,7 +109,7 @@ for iters in range(100000):
     M = Mnew
     
     # benchmark
-    if np.remainder(iters,10)==0:
+    if np.remainder(iters,1)==0:
         Sloss = np.mean(l[iters,:np.prod(Ssz)])
         Mloss = np.mean(l[iters,np.prod(Ssz):])
         print('Sloss: '+str(Sloss) +' Mloss: ' +str(Mloss))
