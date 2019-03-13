@@ -14,6 +14,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import tensorflow as tf
 import scipy.stats
+import scipy.signal
 import cv2
 
 Ssz = [32,32] # S input layer
@@ -50,8 +51,8 @@ a6 = tf.nn.tanh(tf.matmul(a5,tf.transpose(W1))+b6)
 lout = tf.layers.dense(inputs=a6,units=sz,activation=None)
 
 # Training
-loss = tf.abs(Y-lout)
-optimizer = tf.train.GradientDescentOptimizer(learning_rate=0.001)
+loss = tf.losses.mean_pairwise_squared_error(Y,lout)
+optimizer = tf.train.AdamOptimizer(learning_rate=0.001)
 train_op = optimizer.minimize(loss)
 
 # Begin session
@@ -59,7 +60,7 @@ init = tf.global_variables_initializer()
 sess = tf.Session()
 sess.run(init)
 saver = tf.train.Saver()
-#saver.restore(sess, "tmp/TubeNet1.1_10000.ckpt")
+saver.restore(sess, "tmp/TubeNet1.1_iter90000.ckpt")
 
 ############################ Define PhysicsEngine ############################
 
@@ -130,19 +131,20 @@ for iters in range(100000):
     M = Mnew
     
     # benchmark
-    if np.remainder(iters,10)==0:
+    if np.remainder(iters,1)==0:
         Sloss = np.mean(l[iters,:np.prod(Ssz)])
         Mloss = np.mean(l[iters,np.prod(Ssz):])
-        print('Sloss: '+str(Sloss) +' Mloss: ' +str(Mloss))
         plt.subplot(1,2,1)
         plt.imshow(np.reshape(Starget,Ssz),cmap='gray')    
         plt.subplot(1,2,2)
         plt.imshow(np.reshape(Snew,Ssz),cmap='gray')
+        print('Sloss: '+str(Sloss) +' Mloss: ' +str(Mloss) + ' R: ' +str(R))
         plt.show()
     if np.remainder(iters,10000)==0:
         saver.save(sess, 'tmp/TubeNet1.1_iter'+str(iters)+'.ckpt')
         
 sess.close()
 l = l[~np.all(l==0,1)]
-plt.scatter(range(l[:,0].size),np.mean(l[:,:np.prod(Ssz)],1),marker='.')
-plt.scatter(range(l[:,0].size),np.mean(l[:,np.prod(Ssz):],1),marker='.')
+ll = scipy.signal.resample(l,1000)
+plt.scatter(range(1000),np.mean(ll[:,:np.prod(Ssz)],1),marker='.')
+plt.scatter(range(1000),np.mean(ll[:,np.prod(Ssz):],1),marker='.')

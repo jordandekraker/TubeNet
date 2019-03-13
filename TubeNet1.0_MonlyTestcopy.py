@@ -21,31 +21,13 @@ sz = np.prod(Ssz)+np.prod(Msz) # total input size
 
 ############################### define TubeNet ###############################
 
-X = tf.placeholder(tf.float64, [None, sz])
+X = tf.placeholder(tf.float64, [None, np.prod(Ssz)])
 Y = tf.placeholder(tf.float64, [None, sz])
 
-# initialize tf variables
-W1i = np.random.rand(int(sz/1), int(sz/2))
-W1i[:np.prod(Ssz),:] = W1i[:np.prod(Ssz),:]/1000
-W1 = tf.Variable(W1i,dtype=tf.float64)
-W2 = tf.Variable(tf.random_normal((int(sz/2), int(sz/4)),dtype=tf.float64))
-W3 = tf.Variable(tf.random_normal((int(sz/4), int(sz/8)),dtype=tf.float64))
-b1 = tf.Variable(tf.zeros([1,int(sz/2)],dtype=tf.float64))
-b2 = tf.Variable(tf.zeros([1,int(sz/4)],dtype=tf.float64))
-b3 = tf.Variable(tf.zeros([1,int(sz/8)],dtype=tf.float64))
-b4 = tf.Variable(tf.zeros([1,int(sz/4)],dtype=tf.float64))
-b5 = tf.Variable(tf.zeros([1,int(sz/2)],dtype=tf.float64))
-b6 = tf.Variable(tf.zeros([1,int(sz/1)],dtype=tf.float64))
-
-
 # Architecture
-a1 = tf.nn.tanh(tf.matmul(X,W1) + b1)
-a2 = tf.nn.tanh(tf.matmul(a1,W2) + b2)
-a3 = tf.nn.tanh(tf.matmul(a2,W3) + b3)
-a4 = tf.nn.tanh(tf.matmul(a3,tf.transpose(W3))+b4)
-a5 = tf.nn.tanh(tf.matmul(a4,tf.transpose(W2))+b5)
-a6 = tf.nn.tanh(tf.matmul(a5,tf.transpose(W1))+b6)
-lout = tf.layers.dense(inputs=a6,units=sz,activation=None)
+l1 = tf.layers.dense(inputs=X,units=np.prod(Ssz),activation=tf.nn.tanh)
+l2 = tf.layers.dense(inputs=l1,units=np.prod(Ssz)/2,activation=tf.nn.tanh)
+lout = tf.layers.dense(inputs=l2,units=sz,activation=None)
 
 # Training
 loss = tf.losses.mean_pairwise_squared_error(Y,lout)
@@ -57,17 +39,13 @@ train_op = optimizer.minimize(loss)
 init = tf.global_variables_initializer()
 sess = tf.Session()
 sess.run(init)
-# Restore
 saver = tf.train.Saver()
-#saver.restore(sess, "tmp/TubeNet1.0_iter500000.ckpt")
+#saver.restore(sess, "tmp/TubeNet1.0_iter90000.ckpt")
 
 # Logging  
 writer = tf.summary.FileWriter('./graphs',sess.graph)
 Ssummary = tf.summary.scalar('Sloss',tf.reduce_mean(Sloss))
 Msummary = tf.summary.scalar('Mloss',tf.reduce_mean(Mloss))
-
-
-
 ############################ Define PhysicsEngine ############################
 
 smiley = cv2.imread("misc/SmileyFace8bitGray.png",cv2.IMREAD_GRAYSCALE)
@@ -108,19 +86,18 @@ def fixeye(M):
 M = np.zeros([1,np.prod(Msz)])
 M[0,0] = 1
 S = np.zeros([1,np.prod(Ssz)])+0.001
-feed_dict={X: np.concatenate((S,M),1)}
+feed_dict={X: M}
 SMnew = sess.run([lout],feed_dict=feed_dict)[0]
 
 # iterate
-iters = 0
-while iters < 500001:
-    iters = iters+1
+l = np.zeros([100000,sz]) # log the loss over time
+for iters in range(100000):
     
     # parse outputs from previous iter
     Snew = np.zeros([1,np.prod(Ssz)])
     Snew[0,:] = SMnew[0,:np.prod(Ssz)]
     Mnew = np.zeros([1,np.prod(Msz)])
-    if np.random.rand(1) > 10: # sometimes take a random action
+    if np.random.rand(1) > 1/10: # sometimes take a random action
         Mnew[0,np.argmax(SMnew[0,np.prod(Ssz):])] = 1
     else:
         Mnew[0,np.random.randint(np.prod(Msz))] = 1
@@ -131,25 +108,27 @@ while iters < 500001:
     Mtarget = SMnew[0,np.prod(Ssz):]+M*R
 
     # train current iter; feed forward for next iter
-    feed_dict={X: np.concatenate((S,M),1), 
+    feed_dict={X: M, 
                Y: np.concatenate((Starget,Mtarget),1)}
-    SMnew, t = sess.run([lout, train_op],feed_dict=feed_dict)
-    S = Snew
+    SMnew, l[iters,:], t = sess.run([lout, loss, train_op],feed_dict=feed_dict)
+    S = Starget
     M = Mnew
     
     # benchmark
-#    if np.remainder(iters,1)==0:
-#        plt.subplot(1,2,1)
-#        plt.imshow(np.reshape(Starget,Ssz),cmap='gray')    
-#        plt.subplot(1,2,2)
-#        plt.imshow(np.reshape(Snew,Ssz),cmap='gray')
-#        plt.show()
-#        print(str(iters))
-    if np.remainder(iters,10)==0:
-        s,m = sess.run([Ssummary,Msummary],feed_dict=feed_dict)
-        writer.add_summary(s,iters)
-        writer.add_summary(m,iters)
-    if np.remainder(iters,10000)==0:
-        saver.save(sess, 'tmp/TubeNet1.0_iter'+str(iters)+'.ckpt')
+    if np.remainder(iters,1)==0:
+        Sloss = np.mean(l[iters,:np.prod(Ssz)])
+        Mloss = np.mean(l[iters,np.prod(Ssz):])
+        print('Sloss: '+str(Sloss) +' Mloss: ' +str(Mloss) + ' R: ' +str(R))
+        plt.subplot(1,2,1)
+        plt.imshow(np.reshape(Starget,Ssz),cmap='gray')    
+        plt.subplot(1,2,2)
+        plt.imshow(np.reshape(Snew,Ssz),cmap='gray')
+        plt.show()
+#    if np.remainder(iters,10000)==0:
+#        saver.save(sess, 'tmp/TubeNet1.0_iter'+str(iters)+'.ckpt')
         
 sess.close()
+l = l[~np.all(l==0,1)]
+ll = scipy.signal.resample(l,1000)
+plt.scatter(range(ll[:,0].size),np.mean(ll[:,:np.prod(Ssz)],1),marker='.')
+plt.scatter(range(ll[:,0].size),np.mean(ll[:,np.prod(Ssz):],1),marker='.')
